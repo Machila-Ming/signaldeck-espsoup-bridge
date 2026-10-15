@@ -109,7 +109,7 @@ class IqSource:
     def busy(self) -> bool:
         return self._busy
 
-    async def capture(self, freq_hz, sample_rate, samples, gain_db, gain_mode="MANUAL") -> dict:
+    async def capture(self, freq_hz, sample_rate, samples, gain_db, gain_mode="AGC") -> dict:
         if self._device is None:
             return {"ok": False, "message": "no SDR device attached"}
 
@@ -118,7 +118,10 @@ class IqSource:
             self._busy = True
             try:
                 gain = min(max(float(gain_db), 0.0), MAX_GAIN_DB)
-                manual = str(gain_mode).upper() != "HARDWARE"
+                # "MANUAL" = fixed gain; anything else ("AGC") = chip AGC.
+                # The PZSDR clone's manual gain table is broken (inverted >10 dB, unstable),
+                # so AGC is the default: ~18-26x more signal and self-adapting.
+                manual = str(gain_mode).upper() == "MANUAL"
 
                 device.set_sample_rate(sample_rate)
                 device.set_gain_mode(manual)
@@ -215,7 +218,7 @@ async def ws_iq(websocket: WebSocket):
                 sample_rate = float(data.get("sample_rate", 8_000_000.0))
                 samples = int(data.get("samples", 16380))
                 gain_db = float(data.get("gain_db", DEFAULT_GAIN_DB))
-                gain_mode = str(data.get("gain_mode", "MANUAL"))
+                gain_mode = str(data.get("gain_mode", "AGC"))
             except (TypeError, ValueError):
                 await websocket.send_json({"type": "capture", "id": req_id, "ok": False, "message": "bad request"})
                 continue
