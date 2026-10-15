@@ -1,15 +1,15 @@
 """Pseudo-Doppler direction finding — synthetic verification (numpy).
 
-Simulates a 5.8 GHz pseudo-Doppler DF receiver: a 4-antenna circular array
+Simulates a 5.8 GHz pseudo-Doppler DF receiver: an 8-antenna circular array
 switched at F_ROT introduces a phase modulation whose phase encodes the bearing.
 The PZSDR captures IQ and the demod recovers the bearing.
 
 Verifies the SOFTWARE (phase -> bearing) before buying the hardware, the same
 "verify with synthetic first" pattern as the espsoup and fingerprint pipelines.
 
-Hardware design (5.8 GHz VTX — the DF target per DF-Feasibility-Assessment):
-  - 4 antennas in a circle, radius R = 16 mm (modulation index 2*pi*R/lam = 1.94 rad)
-  - SP4T microwave switch (LW-SP4T-0108 class), driven at F_ROT = 1 kHz
+Hardware design (5.8 GHz VTX, 8-antenna SP8T array):
+  - 8 antennas in a circle, radius R = 16 mm (modulation index 2*pi*R/lam = 1.94 rad)
+  - SP8T microwave switch, driven at F_ROT = 1 kHz
   - rotation reference = the switch clock (for the demod correlation below)
 """
 import numpy as np
@@ -18,7 +18,7 @@ C = 3e8
 F_RF = 5.8e9
 LAM = C / F_RF
 R = 0.016         # antenna radius (m); 15-18 mm per DF-Feasibility-Assessment
-N_ANT = 4         # SP4T (4-element discrete switching)
+N_ANT = 8         # SP8T (8-element switching; finer than SP4T)
 F_ROT = 1000.0    # switch rotation rate (Hz)
 FS = 8e6
 DUR = 0.02        # 20 ms = 20 rotations
@@ -52,7 +52,7 @@ def demod(x, theta):
 
 
 def main():
-    print('bearing recovery (4 antennas, 16 mm radius, 5.8 GHz, 1 kHz rotation):')
+    print('bearing recovery (8 antennas, 16 mm radius, 5.8 GHz, 1 kHz rotation):')
     ok = 0
     for b in [0, 45, 90, 135, 180, 225, 270, 315]:
         x, theta = synth(b)

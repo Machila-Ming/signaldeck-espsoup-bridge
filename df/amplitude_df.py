@@ -1,21 +1,21 @@
 """Amplitude direction finding (RSSI comparison) — synthetic verification.
 
-V1 DF per the roadmap (Hardware-Capability-First-Review): 4 directional antennas
-at 0/90/180/270 deg + SP4T switch, read RSSI on each, estimate bearing by
-amplitude comparison. Simpler than pseudo-Doppler (V2) — no rotation, just switch
-and read RSSI.
+V1 DF: N directional antennas around a circle + SP8T switch, read RSSI on each,
+estimate bearing by correlating RSSI against cos/sin of the antenna angles
+(the DFT fundamental — same math as pseudo-Doppler, but on amplitude not phase).
 
-Cardioid beam gain(theta_k) = (1 + cos(bearing - theta_k)) / 2:
-  RSSI_0   - RSSI_180 = A cos(bearing)
-  RSSI_90  - RSSI_270 = A sin(bearing)
-  => bearing = atan2(RSSI_90 - RSSI_270, RSSI_0 - RSSI_180)
+Cardioid beam gain(theta_k) = (1 + cos(bearing - theta_k)) / 2, so:
+  sum_k RSSI_k cos(theta_k) = (A*N/2) cos(bearing)
+  sum_k RSSI_k sin(theta_k) = (A*N/2) sin(bearing)
+  => bearing = atan2(sum RSSI sin, sum RSSI cos)
 
-Note: real precision is limited by beam shape + multipath (the #1 killer at 5.8G
-per DF-Amplitude-RSSI-Feasibility), not by this math.
+Note: real precision is limited by beam shape + multipath (the #1 killer at 5.8G),
+not by this math.
 """
 import numpy as np
 
-ANT_ANGLES = np.deg2rad([0, 90, 180, 270])
+N_ANT = 8
+ANT_ANGLES = np.arange(N_ANT) * (2 * np.pi / N_ANT)
 
 
 def synth_rssi(bearing_deg, snr_db=20.0, seed=0):
@@ -28,13 +28,13 @@ def synth_rssi(bearing_deg, snr_db=20.0, seed=0):
 
 
 def estimate_bearing(rssi):
-    cos_b = rssi[0] - rssi[2]      # RSSI_0 - RSSI_180 = A cos(bearing)
-    sin_b = rssi[1] - rssi[3]      # RSSI_90 - RSSI_270 = A sin(bearing)
+    cos_b = np.sum(rssi * np.cos(ANT_ANGLES))
+    sin_b = np.sum(rssi * np.sin(ANT_ANGLES))
     return float(np.rad2deg(np.arctan2(sin_b, cos_b)))
 
 
 def main():
-    print('amplitude DF (4 cardioid antennas, RSSI comparison @ 20 dB):')
+    print('amplitude DF (8 cardioid antennas, RSSI comparison @ 20 dB):')
     ok = 0
     for b in [0, 45, 90, 135, 180, 225, 270, 315]:
         est = estimate_bearing(synth_rssi(b))
